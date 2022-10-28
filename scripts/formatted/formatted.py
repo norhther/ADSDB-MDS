@@ -5,7 +5,7 @@ import duckdb
 import pathlib
 import logging
 
-logger = logging.getLogger("Fromatted logger")
+logger = logging.getLogger("Formatted logger")
 c_handler = logging.StreamHandler()
 c_handler.setFormatter(logging.Formatter(fmt=' %(name)s :: %(levelname)-8s :: %(message)s'))
 logger.addHandler(c_handler)
