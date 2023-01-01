@@ -1,0 +1,164 @@
+---
+title: "SVM"
+output: html_notebook
+---
+
+
+```{r}
+
+library(tidymodels)
+library(tidyverse)
+library(vip)
+library(caret)
+library(cvms)
+
+df <- read_csv("../preprocessing/data/data_reduced.csv")
+train <- read_csv("../preprocessing/data/training.csv")
+test <-  read_csv("../preprocessing/data/testing.csv")
+
+```
+
+
+```{r}
+svm_spec <- svm_rbf() %>%
+  set_engine("kernlab") %>%
+  set_mode("regression")
+
+svm_spec_class <- svm_rbf() %>%
+  set_engine("kernlab") %>%
+  set_mode("classification")
+
+prep_recipe <- recipe(finalIq ~ ., data = train) %>%
+  step_rm(country_name, rank, class) %>%
+  prep()
+  
+prep_recipe_class <- recipe(class ~ ., data = train) %>%
+  step_rm(country_name, rank, finalIq) %>%
+  step_string2factor(class) %>%
+  prep()
+
+
+svm_fit <- svm_spec %>%
+  fit(finalIq ~ ., data = prep_recipe %>% juice())
+
+svm_fit_class <- svm_spec_class %>%
+  fit(class ~ ., data = prep_recipe_class %>% juice())
+```
+
+
+
+```{r}
+
+augment(svm_fit, new_data = prep_recipe %>% juice()) %>%
+  ggplot(aes(finalIq, .pred)) +
+  geom_abline() +
+  geom_point(alpha = 0.5)
+
+augment(svm_fit, new_data = prep_recipe %>% juice()) %>%
+  rmse(truth = finalIq, estimate = .pred)
+
+augment(svm_fit, new_data = prep_recipe %>% bake(test)) %>%
+  ggplot(aes(finalIq, .pred)) +
+  geom_abline() +
+  geom_point(alpha = 0.5)
+
+augment(svm_fit, new_data = prep_recipe %>% bake(test)) %>%
+  rmse(truth = finalIq, estimate = .pred)
+```
+
+```{r}
+svm_fit_class %>%
+  predict(prep_recipe_class %>% juice()) %>%
+  bind_cols(prep_recipe_class %>% juice()) %>%
+  metrics(truth = class, estimate = .pred_class)
+
+svm_fit_class %>%
+  predict(prep_recipe_class %>% bake(test)) %>%
+  bind_cols(prep_recipe_class %>% bake(test)) %>%
+  metrics(truth = class, estimate = .pred_class)
+
+
+svm_fit_class_probs <- svm_fit_class %>%
+  predict(prep_recipe_class %>% bake(test), type = "prob") %>%
+  bind_cols(prep_recipe_class %>% bake(test))
+
+
+svm_fit_class_probs %>%
+  gain_curve(class, .pred_HIGH:`.pred_MED-HIGH`) %>%
+  autoplot()
+
+
+svm_fit_class_probs %>%
+  roc_curve(class, .pred_HIGH:`.pred_MED-HIGH`) %>%
+  autoplot()
+```
+```{r}
+svm_mod <-
+  svm_rbf(cost = tune(), rbf_sigma = tune()) %>%
+  set_mode("classification") %>%
+  set_engine("kernlab")
+  
+df_folds <- vfold_cv(prep_recipe_class %>% juice(), strata = class)
+
+svm_grid <- grid_latin_hypercube(
+  cost(), rbf_sigma(), size = 50)
+
+```
+
+
+```{r}
+set.seed(42)
+doParallel::registerDoParallel()
+
+tree_rs <- tune_grid(
+  svm_mod,
+  class ~ .,
+  resamples = df_folds,
+  grid = svm_grid,
+  metrics = metric_set(accuracy, yardstick::precision, yardstick::recall)
+)
+
+save(tree_rs, file = "saved_models/tree_rs.RData")
+
+
+```
+
+```{r}
+collect_metrics(tree_rs)
+
+autoplot(tree_rs) + theme_light()
+
+show_best(tree_rs, "accuracy")
+```
+
+```{r}
+tuned_svm <- finalize_model(svm_mod, select_best(tree_rs, "accuracy"))
+
+final_svm_fit <- fit(tuned_svm, class ~ ., prep_recipe_class %>% juice())
+
+save(tuned_svm, file = "saved_models/tuned_svm_class.RData")
+
+```
+
+
+
+```{r}
+
+train_preds <- predict(final_svm_fit, 
+        prep_recipe_class %>% juice())
+
+cm <- caret::confusionMatrix(train_preds$.pred_class, 
+                      (prep_recipe_class %>% juice())$class)
+cm
+plot_confusion_matrix(as_tibble(cm$table),
+                      target_col = "Reference",
+                      prediction_col = "Prediction",
+                      counts_col = "n",
+                      add_row_percentages = F,
+                      add_col_percentages = F,
+                      palette = "Reds")
+
+```
+
+
+

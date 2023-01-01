@@ -1,0 +1,90 @@
+---
+title: "First check and removal"
+output: html_notebook
+---
+This notebook consists of a first look at the data and elimination of inconsistent, null or non-informative variables.
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+
+df <- read_csv("data/merged.csv")
+
+df <- df %>%
+  mutate(school_id = as_factor(school_id),
+         student_id = as_factor(student_id),
+         mother_educ = as_factor(mother_educ),
+         father_educ = as_factor(father_educ),
+         gender = as_factor(gender),
+         computer = as_factor(computer),
+         internet = as_factor(internet),
+         desk = as_factor(desk),
+         room = as_factor(room),
+         dishwasher = as_factor(dishwasher),
+         television = as_factor(television),
+         computer_n = as_factor(computer_n), 
+         car = as_factor(car),
+         book = as_factor(book),
+         country_code = as_factor(country_code),
+         country_name = as_factor(country_name)
+         )
+```
+
+
+An idea could be to use the school identifier as a feature, but it will not be possible because of the high cardinality.
+```{r}
+n_distinct(df$school_id)
+```
+
+ISCED is International Standard Classification of Education.
+Parental education seems a priori relevant.
+
+```{r}
+df %>%
+  count(mother_educ)
+
+df %>%
+  count(father_educ)
+```
+```{r}
+df %>%
+  count(computer)
+
+df %>%
+  count(internet)
+
+df %>%
+  count(desk)
+
+df %>%
+  count(room)
+
+df %>%
+  count(dishwasher)
+
+df %>%
+  count(television)
+
+df %>%
+  count(computer_n)
+
+df %>%
+  count(car)
+
+df %>%
+  count(book)
+
+df %>%
+  count(year)
+```
+Dishwasher is totally null, and computer provides less information than computer. Nor can we impute values, since the NAs of computer are the same as those of computer_n. However, we know
+that every record is from 2015.
+
+```{r}
+
+df %>%
+  select(-computer, -dishwasher, -country_code, -school_id, -student_id, -year) %>%
+  write_csv("data/first_removal.csv")
+
+```
+

@@ -1,0 +1,28 @@
+---
+title: "Merge"
+output: html_document
+date: "2022-12-29"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+
+countries <- read_csv("data/countrycode.csv")
+iq1 <- read_csv("data/IQ_part1.csv")
+iq2 <- read_csv("data/IQ_part2.csv")
+students <- read_csv("data/student_data_2015.csv")
+```
+
+
+This code simply joins iq1 and iq2 and makes full outer joins corresponding to the student datasets, using the countries lookup table.
+```{r}
+iq1 %>%
+  bind_rows(iq2) %>%
+  rename(country_name = country) %>%
+  full_join(., countries, by = "country_name") %>%
+  rename(country_code = country) %>%
+  full_join(., students %>%
+              rename(country_code = country), by = "country_code") %>%
+  write_csv("data/merged.csv")
+
+```

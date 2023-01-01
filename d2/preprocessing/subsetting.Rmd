@@ -1,0 +1,39 @@
+---
+title: "Subsetting"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+
+df <- read_csv("data/feature_generated.csv")
+
+
+df %>%
+  count(country_name)
+
+df %>%
+  ggplot(aes(x = finalIq)) + geom_histogram()
+
+sample_n(df, 10000) %>%
+  ggplot(aes(x = finalIq)) + geom_histogram()
+
+
+
+sampled <- sample_n(df, 10000)
+
+sampled %>%
+  write_csv("data/data_reduced.csv")
+
+
+initial_split <- initial_split(sampled, strata = finalIq)
+
+training(initial_split) %>%
+  write_csv("data/training.csv")
+
+testing(initial_split) %>%
+  write_csv("data/testing.csv")
+
+```

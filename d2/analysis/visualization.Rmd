@@ -1,0 +1,23 @@
+---
+title: "Visualization"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+
+df <- read_csv("../preprocessing/data/feature_generated.csv")
+
+```
+
+```{r}
+
+df %>%
+  select(finalIq, math, read, science) %>%
+  cor() %>%
+  ggcorrplot::ggcorrplot(lab = T, type = "lower")
+
+```
+

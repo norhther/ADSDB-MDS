@@ -1,0 +1,21 @@
+---
+title: "Feature extraction"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+
+df <- read_csv("data/imputed.csv")
+
+summary(df$finalIq)
+
+df %>%
+  mutate(class = ifelse(finalIq < summary(df$finalIq)[[2]], "LOW", 
+         ifelse(finalIq < summary(df$finalIq)[[3]], "LOW-MED", 
+                ifelse(finalIq < summary(df$finalIq)[[5]], "MED-HIGH", "HIGH"
+                )))) %>%
+  write_csv("data/feature_generated.csv")
+```

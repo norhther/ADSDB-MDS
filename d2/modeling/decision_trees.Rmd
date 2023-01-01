@@ -1,0 +1,269 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidymodels)
+library(tidyverse)
+library(ISLR)
+library(rpart.plot)
+library(vip)
+library(baguette)
+
+df <- read_csv("../preprocessing/data/data_reduced.csv")
+
+```
+
+
+```{r}
+train <- read_csv("../preprocessing/data/training.csv")
+test <-  read_csv("../preprocessing/data/testing.csv")
+```
+
+
+
+```{r}
+tree_spec <- decision_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("regression")
+
+prep_recipe <- recipe(finalIq ~ ., data = train) %>%
+  step_rm(country_name, rank, class) %>%
+  prep()
+  
+
+prep_recipe_class <- recipe(class ~ ., data = train) %>%
+  step_rm(country_name, rank, finalIq) %>%
+  prep()
+
+
+
+train_juiced <- prep_recipe %>% juice()
+
+
+tree_fit <- tree_spec %>%
+  fit(finalIq ~ ., data = train_juiced)
+
+
+tree_fit %>%
+  extract_fit_engine() %>%
+  rpart.plot()
+
+save(tree_fit, file = "saved_models/tree_fit_regr.RData")
+
+```
+
+
+
+```{r}
+
+augment(tree_fit, new_data = prep_recipe %>% juice()) %>%
+  ggplot(aes(finalIq, .pred)) +
+  geom_abline() +
+  geom_point(alpha = 0.5)
+
+augment(tree_fit, new_data = prep_recipe %>% juice()) %>%
+  rmse(truth = finalIq, estimate = .pred)
+
+augment(tree_fit, new_data = prep_recipe %>% bake(test)) %>%
+  ggplot(aes(finalIq, .pred)) +
+  geom_abline() +
+  geom_point(alpha = 0.5)
+
+augment(tree_fit, new_data = prep_recipe %>% bake(test)) %>%
+  rmse(truth = finalIq, estimate = .pred)
+```
+
+```{r}
+vip(tree_fit)
+```
+
+
+
+```{r}
+tree_spec_class <- decision_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+tree_fit_class <- fit(tree_spec_class, 
+                    class ~ ., 
+                    data = prep_recipe_class %>% juice())
+
+tree_fit_class %>%
+  predict(prep_recipe_class %>% juice()) %>%
+  bind_cols(prep_recipe_class %>% juice()) %>%
+  metrics(truth = class, estimate = .pred_class)
+
+
+tree_fit_class %>%
+  predict(prep_recipe_class %>% bake(test)) %>%
+  bind_cols(prep_recipe_class %>% bake(test)) %>%
+  metrics(truth = class, estimate = .pred_class)
+
+tree_fit_class_probs <- tree_fit_class %>%
+  predict(prep_recipe_class %>% bake(test), type = "prob") %>%
+  bind_cols(prep_recipe_class %>% bake(test))
+
+
+tree_fit_class_probs %>%
+  gain_curve(class, .pred_HIGH:`.pred_MED-HIGH`) %>%
+  autoplot()
+
+
+tree_fit_class_probs %>%
+  roc_curve(class, .pred_HIGH:`.pred_MED-HIGH`) %>%
+  autoplot()
+
+tree_fit_class %>%
+  extract_fit_engine() %>%
+  rpart.plot()
+
+save(tree_fit_class, file = "saved_models/tree_fit_class.RData")
+
+
+```
+
+
+```{r}
+rf_spec <- rand_forest(mtry = 6) %>%
+  set_engine("randomForest", importance = TRUE) %>%
+  set_mode("regression")
+
+rf_fit <- fit(rf_spec, finalIq ~ ., data = prep_recipe %>% juice())
+
+augment(rf_fit, new_data = prep_recipe %>% juice()) %>%
+  rmse(truth = finalIq, estimate = .pred)
+
+augment(rf_fit, new_data = prep_recipe %>% juice()) %>%
+  ggplot(aes(finalIq, .pred)) +
+  geom_abline() +
+  geom_point(alpha = 0.5)
+
+
+augment(rf_fit, new_data = prep_recipe %>% bake(test)) %>%
+  rmse(truth = finalIq, estimate = .pred)
+
+augment(rf_fit, new_data = prep_recipe %>% bake(test)) %>%
+  ggplot(aes(finalIq, .pred)) +
+  geom_abline() +
+  geom_point(alpha = 0.5)
+
+save(rf_fit, file = "saved_models/rForest_regr.RData")
+
+```
+```{r}
+rf_spec_classification <- rand_forest(mtry = 6) %>%
+  set_engine("randomForest", importance = TRUE) %>%
+  set_mode("classification")
+
+rf_fit_class <- fit(rf_spec_classification, 
+                    class ~ ., 
+                    data = prep_recipe_class %>% juice())
+
+rf_fit_class %>%
+  predict(prep_recipe_class %>% juice()) %>%
+  bind_cols(prep_recipe_class %>% juice()) %>%
+  metrics(truth = class, estimate = .pred_class)
+
+
+
+rf_fit_class %>%
+  predict(prep_recipe_class %>% bake(test)) %>%
+  bind_cols(prep_recipe_class %>% bake(test)) %>%
+  metrics(truth = class, estimate = .pred_class)
+
+
+rf_fit_class_probs <- rf_fit_class %>%
+  predict(prep_recipe_class %>% bake(test), type = "prob") %>%
+  bind_cols(prep_recipe_class %>% bake(test))
+
+rf_fit_class_probs %>%
+  gain_curve(class, .pred_HIGH:`.pred_MED-HIGH`) %>%
+  autoplot()
+
+
+rf_fit_class_probs %>%
+  roc_curve(class, .pred_HIGH:`.pred_MED-HIGH`) %>%
+  autoplot()
+
+vip(rf_fit_class)
+
+save(rf_fit_class, file = "saved_models/rForest_class.RData")
+
+```
+
+```{r}
+bag_spec <- 
+  bag_mars() %>%
+  set_engine("earth", times = 25) %>%
+  set_mode("regression")
+  
+  
+bag_fit <- fit(bag_spec, 
+              finalIq ~ ., 
+              data = prep_recipe %>% juice())
+
+
+augment(bag_fit, new_data = prep_recipe %>% juice()) %>%
+  rmse(truth = finalIq, estimate = .pred)
+
+augment(bag_fit, new_data = prep_recipe %>% juice()) %>%
+  ggplot(aes(finalIq, .pred)) +
+  geom_abline() +
+  geom_point(alpha = 0.5)
+
+
+augment(bag_fit, new_data = prep_recipe %>% bake(test)) %>%
+  rmse(truth = finalIq, estimate = .pred)
+
+augment(bag_fit, new_data = prep_recipe %>% bake(test)) %>%
+  ggplot(aes(finalIq, .pred)) +
+  geom_abline() +
+  geom_point(alpha = 0.5)
+
+save(bag_fit, file = "saved_models/baggingRegression.RData")
+
+```
+
+```{r}
+bag_classification <- bag_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+bag_fit_class <- fit(bag_classification, 
+                    class ~ ., 
+                    data = prep_recipe_class %>% juice())
+
+bag_fit_class %>%
+  predict(prep_recipe_class %>% juice()) %>%
+  bind_cols(prep_recipe_class %>% juice()) %>%
+  metrics(truth = class, estimate = .pred_class)
+
+
+
+bag_fit_class %>%
+  predict(prep_recipe_class %>% bake(test)) %>%
+  bind_cols(prep_recipe_class %>% bake(test)) %>%
+  metrics(truth = class, estimate = .pred_class)
+
+
+bag_fit_class_probs <- bag_fit_class %>%
+  predict(prep_recipe_class %>% bake(test), type = "prob") %>%
+  bind_cols(prep_recipe_class %>% bake(test))
+
+bag_fit_class_probs %>%
+  gain_curve(class, .pred_HIGH:`.pred_MED-HIGH`) %>%
+  autoplot()
+
+
+bag_fit_class_probs %>%
+  roc_curve(class, .pred_HIGH:`.pred_MED-HIGH`) %>%
+  autoplot()
+
+save(bag_fit_class, file = "saved_models/bag_fit_class.RData")
+
+```
+
+

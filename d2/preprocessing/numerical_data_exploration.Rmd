@@ -1,0 +1,103 @@
+---
+title: "Numerical Data Exploration"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(ggrepel)
+library(ggcorrplot)
+df <- read_csv("data/first_removal.csv")
+
+# all characters to factors
+df <- df %>% mutate(across(where(is_character), as_factor))
+```
+
+
+
+```{r}
+df %>% summarise_all(~ sum(is.na(.)))/nrow(df)
+```
+
+
+
+```{r}
+df %>%
+  ggplot(aes(x = math)) + geom_boxplot()
+
+df %>%
+  ggplot(aes(x = science)) + geom_boxplot()
+
+df %>%
+  ggplot(aes(x = read)) + geom_boxplot()
+
+df %>%
+  ggplot(aes(x = stu_wgt)) + geom_boxplot()
+
+df %>%
+  ggplot(aes(x = wealth)) + geom_boxplot()
+
+df %>%
+  ggplot(aes(x = escs)) + geom_boxplot()
+```
+
+
+```{r}
+df %>%
+  select(where(is.numeric)) %>%
+  na.omit() %>%
+  cor() %>%
+  ggcorrplot(lab = T, type = "lower")
+```
+
+```{r}
+exam_means <- df %>%
+  group_by(country_name) %>%
+  summarize(math_mean = mean(math, na.rm = T),
+            read_mean = mean(read, na.rm = T),
+            science_mean = mean(science, na.rm = T),
+            wealth_mean = mean(wealth, na.rm = T),
+            ) %>%
+  na.omit()
+
+
+top_bot_20 <- exam_means %>%
+  arrange(desc(wealth_mean)) %>%
+  head(20) %>%
+  bind_rows(
+    exam_means %>%
+    arrange(desc(wealth_mean)) %>%
+    tail(20)
+  ) 
+
+
+top_bot_20 %>%
+  ggplot(aes(x = wealth_mean, y = math_mean, label = country_name)) + geom_point() + 
+  geom_label_repel(box.padding = unit(0.5, "lines"), 
+                  point.padding = 0.5,
+                  segment.color = 'grey50',
+                  size = 2,
+                  max.overlaps = 100)
+
+top_bot_20 %>%
+  ggplot(aes(x = wealth_mean, y = science_mean, label = country_name)) + geom_point() + 
+  geom_label_repel(box.padding = unit(0.5, "lines"), 
+                  point.padding = 0.5,
+                  segment.color = 'grey50',
+                  size = 2,
+                  max.overlaps = 100)
+
+
+top_bot_20 %>%
+  ggplot(aes(x = wealth_mean, y = read_mean, label = country_name)) + geom_point() + 
+  geom_label_repel(box.padding = unit(0.5, "lines"), 
+                  point.padding = 0.5,
+                  segment.color = 'grey50',
+                  size = 2,
+                  max.overlaps = 100)
+```
+
+```{r}
+
+```
+

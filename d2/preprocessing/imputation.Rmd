@@ -1,0 +1,50 @@
+---
+title: "Data imputation"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+df <- read_csv("data/first_removal.csv")
+```
+
+```{r}
+sapply(df, function(x) sum(is.na(x))/nrow(df))
+```
+As finalIq is the variable that we want to predict, we can not impute it.
+So we are going to remove these na values, 16% of the total observations, however, we 
+have half a million records.
+
+
+```{r}
+df <- df %>%
+  filter(!is.na(finalIq))
+sapply(df, function(x) sum(is.na(x))/nrow(df))
+
+```
+
+```{r}
+preprocess_recipe <- recipe(~., data = df) %>%
+  step_impute_knn(mother_educ, father_educ, gender, internet, math, read, science, stu_wgt, desk,
+                  room, television, computer_n, car, book, wealth, escs,
+                  neighbors = floor(sqrt(ncol(df))))
+
+preprocess_rec_prep <- prep(preprocess_recipe, df)
+
+juice(preprocess_rec_prep) %>%
+  write_csv("data/imputed.csv")
+```
+
+Apply a knn with k = sqrt(n_obs) -> good practical results!
+Devroye, L., Györfi, L., & Lugosi, G. (1996). A Probabilistic Theory of Pattern Recognition. Springer. https://doi.org/10.1007/978-1-4612-0711-5. See chapters 5, 6, 11, 26.
+Stone, C. J. (1977). Consistent nonparametric regression. The Annals of Statistics, 5(4) 595 - 645. https://doi.org/10.1214/aos/1176343886
+Chaudhuri, K., & Dasgupta, S. (2014). Rates of convergence for nearest neighbour classification. Advances in Neural Information Processing Systems 27, NIPS 2014. https://papers.nips.cc/paper/2014/hash/db957c626a8cd7a27231adfbf51e20eb-Abstract.html
+
+```{r}
+sapply(juice(preprocess_rec_prep), function(x) sum(is.na(x))/nrow(df))
+```
+
+
