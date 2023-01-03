@@ -8,6 +8,7 @@ editor_options:
 ```{r}
 library(FactoMineR)
 library(factoextra)
+library(tidyverse)
 df <- read.csv("../preprocessing/data/feature_generated.csv", stringsAsFactor = T)
 ```
 
@@ -19,17 +20,20 @@ num_cols <- unlist(lapply(df, is.numeric)); num_cols
 df_cat <- df[,!num_cols]
 df_cat$finalIq <- df$finalIq
 df_cat$country_name <- NULL
+df_cat$math <- df$math
+df_cat$read <- df$read
+df_cat$science <- df$science
 
-for (i in 1:(ncol(df_cat)-1)) {
+for (i in 1:(ncol(df_cat)-4)) {
   plot(df_cat[,i], main=colnames(df_cat)[i],
        ylab = "Count", col="steelblue", las = 2)
-  }
+}
 ```
 
 # MCA analysis
 
 ```{r}
-res.mca0<-MCA(df_cat, quanti.sup=12, graph=FALSE)
+res.mca0<-MCA(df_cat, quanti.sup=c(12:15), graph=FALSE)
 names(res.mca0)
 print(res.mca0)
 summary(res.mca0)
@@ -78,5 +82,18 @@ res.desc[[3]]
 res.desc[[4]]
 # Description of dimension 5
 res.desc[[5]]
+```
+
+# MFA
+
+```{r}
+df_subset <- df %>%
+  select(finalIq, read, science, math, mother_educ, father_educ, desk, room, television, computer_n, car, book, wealth, pop2021)
+
+set.seed(42)
+res.mfa <- MFA(df_subset %>% sample_n(10000),
+               group = c(4, 2, 6, 1, 1),
+               type = c("s", "n", "n", "s", "s"),
+               name.group = c("iq_pisa", "parents_education", "commodities", "wealth", "country_pop"))
 ```
 
