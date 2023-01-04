@@ -1,0 +1,70 @@
+---
+title: "Data quality"
+output: html_document
+date: "2023-01-04"
+editor_options: 
+  chunk_output_type: console
+---
+
+# Load data
+
+```{r}
+library(dlookr)
+library(dplyr)
+df <- read.csv("10-28-2022-20.28.36@student_data_2015.csv", stringsAsFactor = T)
+#df <- read.csv("10-28-2022-20.28.36@countrycode.csv", stringsAsFactor = T)
+#df <- read.csv("10-28-2022-20.28.36@IQ_part1.csv", stringsAsFactor = T)
+#df <- read.csv("10-28-2022-20.28.36@IQ_part2.csv", stringsAsFactor = T)
+```
+
+# Data diagnosis
+
+```{r}
+diagnose(df)
+diagnose_numeric(df)
+diagnose_category(df)
+diagnose_outlier(df) %>% 
+  filter(outliers_ratio > 5) %>% 
+  mutate(rate = outliers_mean / with_mean) %>% 
+  arrange(desc(rate)) %>% 
+  select(-outliers_cnt)
+```
+
+# Visualization of outliers
+
+```{r}
+# Visualize all numeric variables with an outlier ratio of 5% or higher
+df %>% plot_outlier(diagnose_outlier(df) %>% 
+                     filter(outliers_ratio >= 5) %>% 
+                     select(variables) %>% 
+                     unlist())
+```
+
+# Visualization for missing values
+
+```{r}
+# Pareto chart by collecting variables including missing values
+df %>% 
+  plot_na_pareto(only_na = TRUE, main = "Pareto Chart for df")
+set.seed(123)
+df_sample <- df[sample(1:nrow(df), size = 1000),]
+df_sample %>% 
+  plot_na_hclust(main = "Distribution of missing value")
+# Visualize the combinations of missing value across cases
+df %>% 
+  plot_na_intersect()
+```
+
+# Automated report
+
+```{r}
+# Web report
+df %>%
+  diagnose_web_report(subtitle = "df", output_dir = "./", 
+                      output_file = "Data diagonosis.html", theme = "blue")
+# Static report
+df %>%
+  diagnose_paged_report(subtitle = "df", output_dir = "./",
+                        output_file = "Data diagonosis.pdf", theme = "blue")
+```
+
