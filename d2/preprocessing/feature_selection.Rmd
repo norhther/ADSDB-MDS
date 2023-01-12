@@ -22,9 +22,11 @@ df <- read.csv("data/feature_generated.csv", stringsAsFactor = T)
 df_num <- select_if(df, is.numeric)             # Subset numeric columns with dplyr
 df_num
 df_num$class <- df$class
+summary(df_num)
+df_num <- df_num[,-c(1,2)]    # remove rank and finalIq
 
 # calculate correlation matrix
-correlationMatrix <- cor(df_num[,1:9])
+correlationMatrix <- cor(df_num[,1:7])
 # summarize the correlation matrix
 print(correlationMatrix)
 # find attributes that are highly corrected (ideally >0.75)
@@ -32,7 +34,7 @@ highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.5)
 # print indexes of highly correlated attributes
 print(highlyCorrelated)
 summary(df_num[,highlyCorrelated])
-# Looking at the correlation between features, "finalIq", "pop2021", "math", "science", "escs" should be removed
+# Looking at the correlation between features, "pop2021", "math", "science", "escs" should be removed
 ```
 
 # Rank Features By Importance
@@ -40,7 +42,6 @@ summary(df_num[,highlyCorrelated])
 ```{r}
 set.seed(7)
 df_sample <- df_num[sample(nrow(df_num), 5000), ]
-levels(df_sample$class) <- c("HIGH","LOW","LOW","HIGH")
 # prepare training scheme
 control <- trainControl(method="repeatedcv", number=10)
 # train the model
@@ -51,15 +52,13 @@ importance <- varImp(model, scale=FALSE)
 print(importance)
 # plot importance
 plot(importance)
-# class is obtained from finalIq, so finalIq has maximum importance. Rank is highly correlated to finalIq, so it can be removed. The importance plot suggests to remove "pop2021" and "stu_wgt"
+# The importance plot suggests to remove "stu_wgt"
 ```
 
 # Recursive Feature Elimination
 
 ```{r}
 set.seed(7)
-# Without removing these 2 features we only get finalIq for the results with accuracy 100%
-df_sample <- df_sample[,-c(1:2)]
 # define the control using a random forest selection function
 control <- rfeControl(functions=rfFuncs, method="cv", number=10)
 # run the RFE algorithm
@@ -70,17 +69,16 @@ print(results)
 predictors(results)
 # plot the results
 plot(results, type=c("g", "o"))
-# RFE tells us to keep "pop2021" and "wealth"
+# RFE tells us to keep "pop2021"
 ```
 
 # Feature selection looking at the previous results
 
 ```{r}
-# "pop2021" should be removed, because it has a low importance
-# "rank" should be removed, it is highly correlated to "finalIq"
+# "stu_wgt" should be removed
 summary(df)
-df_new <- df[,-c(1,4)]
+df_new <- df[,-c(12)]
 summary(df_new)
-write.csv(df_new,"data/feature_selected.csv",row.names = FALSE)
+write.csv(df_new,"data/feature_selected.csv", row.names = FALSE)
 ```
 
