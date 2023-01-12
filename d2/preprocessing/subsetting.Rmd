@@ -7,7 +7,7 @@ output: html_notebook
 
 ```{r}
 library(tidyverse)
-
+set.seed(42)
 df <- read_csv("data/feature_generated.csv")
 
 

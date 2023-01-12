@@ -13,7 +13,7 @@ library(vip)
 library(baguette)
 
 df <- read_csv("../preprocessing/data/data_reduced.csv")
-
+set.seed(42)
 ```
 
 
