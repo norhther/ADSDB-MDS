@@ -30,11 +30,11 @@ correlationMatrix <- cor(df_num[,1:7])
 # summarize the correlation matrix
 print(correlationMatrix)
 # find attributes that are highly corrected (ideally >0.75)
-highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.5)
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
 # print indexes of highly correlated attributes
 print(highlyCorrelated)
 summary(df_num[,highlyCorrelated])
-# Looking at the correlation between features, "pop2021", "math", "science", "escs" should be removed
+# Looking at the correlation between features, "pop2021", "math", "science" should be removed
 ```
 
 # Rank Features By Importance
