@@ -1,0 +1,86 @@
+---
+title: "feature_selection"
+output: html_document
+date: "2023-01-12"
+editor_options: 
+  chunk_output_type: console
+---
+
+# Load data
+
+```{r}
+# load the libraries
+library(mlbench)
+library(caret)
+library(dplyr)
+df <- read.csv("data/feature_generated.csv", stringsAsFactor = T)
+```
+
+# Identifying Redundant Features
+
+```{r}
+df_num <- select_if(df, is.numeric)             # Subset numeric columns with dplyr
+df_num
+df_num$class <- df$class
+
+# calculate correlation matrix
+correlationMatrix <- cor(df_num[,1:9])
+# summarize the correlation matrix
+print(correlationMatrix)
+# find attributes that are highly corrected (ideally >0.75)
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.5)
+# print indexes of highly correlated attributes
+print(highlyCorrelated)
+summary(df_num[,highlyCorrelated])
+# Looking at the correlation between features, "finalIq", "pop2021", "math", "science", "escs" should be removed
+```
+
+# Rank Features By Importance
+
+```{r}
+set.seed(7)
+df_sample <- df_num[sample(nrow(df_num), 5000), ]
+levels(df_sample$class) <- c("HIGH","LOW","LOW","HIGH")
+# prepare training scheme
+control <- trainControl(method="repeatedcv", number=10)
+# train the model
+model <- train(class~., data=df_sample, method="lvq", preProcess="scale", trControl=control)
+# estimate variable importance
+importance <- varImp(model, scale=FALSE)
+# summarize importance
+print(importance)
+# plot importance
+plot(importance)
+# class is obtained from finalIq, so finalIq has maximum importance. Rank is highly correlated to finalIq, so it can be removed. The importance plot suggests to remove "pop2021" and "stu_wgt"
+```
+
+# Recursive Feature Elimination
+
+```{r}
+set.seed(7)
+# Without removing these 2 features we only get finalIq for the results with accuracy 100%
+df_sample <- df_sample[,-c(1:2)]
+# define the control using a random forest selection function
+control <- rfeControl(functions=rfFuncs, method="cv", number=10)
+# run the RFE algorithm
+results <- rfe(df_sample[,1:7], df_sample[,8], sizes=c(1:7), rfeControl=control)
+# summarize the results
+print(results)
+# list the chosen features
+predictors(results)
+# plot the results
+plot(results, type=c("g", "o"))
+# RFE tells us to keep "pop2021" and "wealth"
+```
+
+# Feature selection looking at the previous results
+
+```{r}
+# "pop2021" should be removed, because it has a low importance
+# "rank" should be removed, it is highly correlated to "finalIq"
+summary(df)
+df_new <- df[,-c(1,4)]
+summary(df_new)
+write.csv(df_new,"data/feature_selected.csv")
+```
+
