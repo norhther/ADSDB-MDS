@@ -81,6 +81,6 @@ plot(results, type=c("g", "o"))
 summary(df)
 df_new <- df[,-c(1,4)]
 summary(df_new)
-write.csv(df_new,"data/feature_selected.csv")
+write.csv(df_new,"data/feature_selected.csv",row.names = FALSE)
 ```
 
